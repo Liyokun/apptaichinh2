@@ -2,51 +2,48 @@
    FILE LOGIC: HỆ THỐNG VÍ ĐỘNG (DYNAMIC WALLET SYSTEM) - FIX FULL
    ================================================================= */
 
-// --- 1. KHỞI TẠO DỮ LIỆU ---
+// --- 1. KHỞI TẠO DỮ LIỆU AN TOÀN ---
 // Cấu trúc mới: appData chứa tổng ngân sách và mảng các ví con
 let appData = JSON.parse(localStorage.getItem('app_data_v4')) || {
     totalBudget: 0,
-    wallets: [
-        // Dữ liệu mẫu ban đầu
-        { id: 1, name: "Skincare", alloc: 0, spent: 0, lastInput: 0, note: "" },
-        { id: 2, name: "Sức khỏe", alloc: 0, spent: 0, lastInput: 0, note: "" },
-        { id: 3, name: "Tiêu dùng", alloc: 0, spent: 0, lastInput: 0, note: "" },
-        { id: 4, name: "Cần thiết", alloc: 0, spent: 0, lastInput: 0, note: "" }
-    ]
+    wallets: [] // Để trống, chờ người dùng tạo
 };
 
 let mName = localStorage.getItem('mName_v3') || "Tháng hiện tại";
 let theme = localStorage.getItem('theme_v3') || 'light';
 
 // Hàm tiện ích
-const fmt = (n) => n.toLocaleString('vi-VN');
+const fmt = (n) => (n || 0).toLocaleString('vi-VN');
 const saveDB = () => localStorage.setItem('app_data_v4', JSON.stringify(appData));
 
-// --- 2. LOGIC GIAO DIỆN CHUNG ---
-document.body.setAttribute('data-theme', theme);
-// Kiểm tra phần tử tồn tại trước khi gán để tránh lỗi
-if(document.getElementById('month-name-inp')) document.getElementById('month-name-inp').value = mName;
-if(document.getElementById('display-month-title')) document.getElementById('display-month-title').innerText = mName;
-
+// --- 2. HÀM ĐIỀU HƯỚNG (TAB) ---
 function tab(id) {
-    document.querySelectorAll('.screen').forEach(e => e.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+    const screens = document.querySelectorAll('.screen');
+    const navItems = document.querySelectorAll('.nav-item');
     
-    const screen = document.getElementById('screen-' + id);
-    if(screen) screen.classList.add('active');
+    // Ẩn tất cả màn hình
+    screens.forEach(e => e.classList.remove('active'));
+    navItems.forEach(e => e.classList.remove('active'));
     
+    // Hiện màn hình được chọn
+    const targetScreen = document.getElementById('screen-' + id);
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+    }
+    
+    // Active nút điều hướng
     const navMap = ['daily', 'budget', 'status', 'history', 'alloc', 'settings'];
     const idx = navMap.indexOf(id);
-    if(document.querySelectorAll('.nav-item')[idx]) {
-        document.querySelectorAll('.nav-item')[idx].classList.add('active');
+    if (navItems[idx]) {
+        navItems[idx].classList.add('active');
     }
 
     // Render lại dữ liệu mới nhất mỗi khi chuyển tab
-    if(id === 'daily') renderDailyInputs();
-    if(id === 'budget') renderBudgetLogic();
-    if(id === 'status') renderStatusLogic(); 
-    if(id === 'history') renderHistory();
-    if(id === 'alloc') renderAllocInputs();
+    if (id === 'daily') renderDailyInputs();
+    if (id === 'budget') renderBudgetLogic();
+    if (id === 'status') renderStatusLogic(); 
+    if (id === 'history') renderHistory();
+    if (id === 'alloc') renderAllocInputs();
     
     window.scrollTo(0,0);
 }
@@ -57,15 +54,15 @@ function toggleTheme() {
     document.body.setAttribute('data-theme', theme);
 }
 
-// --- 3. LOGIC PHÂN BỔ (GỐC RỄ) ---
+// --- 3. PHÂN BỔ (ALLOC) - GỐC RỄ ---
 
 // Vẽ danh sách ví ở màn hình Phân bổ
 function renderAllocInputs() {
     const totalEl = document.getElementById('base-total-budget');
-    if(totalEl) totalEl.value = appData.totalBudget || '';
+    if (totalEl) totalEl.value = appData.totalBudget || '';
     
     const container = document.getElementById('alloc-wallets-container');
-    if(!container) return;
+    if (!container) return;
     
     container.innerHTML = ''; // Xóa cũ vẽ mới
 
@@ -91,7 +88,7 @@ function addNewWallet() {
     const name = prompt("Nhập tên ví mới (Ví dụ: Trà sữa):");
     if (name) {
         appData.wallets.push({
-            id: Date.now(), // ID duy nhất
+            id: Date.now(),
             name: name,
             alloc: 0,
             spent: 0,
@@ -140,16 +137,16 @@ function saveAllocConfig() {
     tab('daily'); 
 }
 
-// --- 4. LOGIC NHẬP LIỆU (DAILY INPUT) ---
+// --- 4. NHẬP LIỆU (DAILY INPUT) ---
 
 function renderDailyInputs() {
     const container = document.getElementById('daily-wallets-list');
-    if(!container) return;
+    if (!container) return;
     
     container.innerHTML = '';
 
-    if(appData.wallets.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Chưa có ví nào.<br>Hãy sang mục Phân bổ để tạo.</p>';
+    if (appData.wallets.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">Chưa có ví nào.<br>Hãy sang mục Phân bổ ⚙️ để tạo.</p>';
         return;
     }
 
@@ -165,7 +162,7 @@ function renderDailyInputs() {
                 <button class="btn-mini btn-undo" onclick="undoTransaction(${index})">Xóa</button>
             </div>
 
-            <input type="text" id="note-${w.id}" value="${w.note}" onchange="updateNote(${index}, this.value)" 
+            <input type="text" id="note-${w.id}" value="${w.note || ''}" onchange="updateNote(${index}, this.value)" 
                    placeholder="Ghi chú cho mục này..." style="font-size:14px; color:#666; font-style:italic; margin-bottom:10px; text-align:left; width: 100%; box-sizing: border-box;">
 
             <div class="total-row">
@@ -211,21 +208,20 @@ function updateNote(index, val) {
     saveDB();
 }
 
-// --- 5. LOGIC BIẾN ĐỘNG & TÌNH HÌNH ---
+// --- 5. BIẾN ĐỘNG & TÌNH HÌNH ---
 
 function renderBudgetLogic() {
     const totalBudget = appData.totalBudget * 1000;
-    const allocated = appData.wallets.reduce((sum, w) => sum + (w.alloc || 0), 0) * 1000;
-    const totalSpent = appData.wallets.reduce((sum, w) => sum + (w.spent || 0), 0) * 1000;
-    
+    const spentTotal = appData.wallets.reduce((s, w) => s + (w.spent || 0), 0) * 1000;
+    const allocated = appData.wallets.reduce((s, w) => s + (w.alloc || 0), 0) * 1000;
+
     // 1. Hiển thị Tiết kiệm dự tính
-    const staticSaving = totalBudget - allocated;
-    const saveDisplay = document.getElementById('static-saving-display');
-    if(saveDisplay) saveDisplay.innerText = fmt(staticSaving) + " VNĐ";
+    const displaySaving = document.getElementById('static-saving-display');
+    if (displaySaving) displaySaving.innerText = fmt(totalBudget - allocated) + " VNĐ";
 
     // 2. Hiển thị chi tiết từng ví
     const container = document.getElementById('budget-details');
-    if(container) {
+    if (container) {
         let html = '';
         appData.wallets.forEach(w => {
             const wAlloc = (w.alloc || 0) * 1000;
@@ -242,11 +238,11 @@ function renderBudgetLogic() {
     }
 
     // 3. Hiển thị Số dư thực tế
-    const actualBalance = totalBudget - totalSpent;
+    const actualBalance = totalBudget - spentTotal;
     const balEl = document.getElementById('actual-balance-display');
     const balBox = document.getElementById('balance-box-ui');
     
-    if(balEl && balBox) {
+    if (balEl && balBox) {
         balEl.innerText = fmt(actualBalance) + " VNĐ";
         if (actualBalance < 0) {
             balEl.className = 'balance-value text-red';
@@ -280,6 +276,7 @@ function renderStatusLogic() {
     const statusTextEl = document.getElementById('hologram-status-text');
     if(statusTextEl) statusTextEl.innerText = statusText;
     
+    // Gọi Magic (Nếu có file magic.js)
     if(typeof updateVisuals === "function") updateVisuals(percent);
 }
 
@@ -381,15 +378,27 @@ function delHist(id) {
 }
 
 function updateMonthName() {
-    mName = document.getElementById('month-name-inp').value;
-    localStorage.setItem('mName_v3', mName);
-    document.getElementById('display-month-title').innerText = mName;
-    alert("Đã đổi tên tháng");
+    const val = document.getElementById('month-name-inp').value;
+    if(val) {
+        mName = val;
+        localStorage.setItem('mName_v3', mName);
+        document.getElementById('display-month-title').innerText = mName;
+        alert("Đã đổi tên tháng");
+    }
 }
 
 // --- 7. KÍCH HOẠT HỆ THỐNG (CHÌA KHÓA QUAN TRỌNG NHẤT) ---
-window.onload = () => {
-    // Tự động vào màn hình nhập liệu để render giao diện
-    tab('daily'); 
-    console.log("System Started - Dynamic Core V4");
+window.onload = function() {
+    // Chỉ gán giá trị nếu phần tử tồn tại
+    const mInput = document.getElementById('month-name-inp');
+    if (mInput) mInput.value = mName;
+    
+    const mTitle = document.getElementById('display-month-title');
+    if (mTitle) mTitle.innerText = mName;
+    
+    document.body.setAttribute('data-theme', theme);
+    
+    // Nổ máy
+    tab('daily');
+    console.log("System V8 Active - Full Logic Loaded");
 };
