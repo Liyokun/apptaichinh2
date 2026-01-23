@@ -56,7 +56,7 @@ function toggleTheme() {
 
 // --- 3. PHÂN BỔ (ALLOC) - GỐC RỄ ---
 
-// Vẽ danh sách ví ở màn hình Phân bổ
+// Vẽ danh sách ví ở màn hình Phân bổ (Giao diện mới: Nút Xóa chữ rõ ràng)
 function renderAllocInputs() {
     const totalEl = document.getElementById('base-total-budget');
     if (totalEl) totalEl.value = appData.totalBudget || '';
@@ -69,13 +69,19 @@ function renderAllocInputs() {
     appData.wallets.forEach((w, index) => {
         const div = document.createElement('div');
         div.className = 'input-group';
+        // Thêm đường kẻ mờ để phân cách các ví cho dễ nhìn
+        div.style = "flex-direction: column; align-items: stretch; margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 10px;";
+        
         div.innerHTML = `
-            <div style="display:flex; align-items:center; width:100%;">
-                <button class="btn-icon-del" onclick="deleteWallet(${index})">🗑️</button>
-                <span style="flex:1; margin-left:10px; font-weight:500;">${w.name}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-weight:bold; font-size: 15px;">${w.name}</span>
+                <button class="btn-del-text" onclick="deleteWallet(${index})">XÓA VÍ</button>
             </div>
-            <div class="k-input-wrapper">
-                <input type="number" value="${w.alloc || ''}" onchange="updateWalletAlloc(${index}, this.value)" placeholder="0">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12px; color:#666;">Ngân sách:</span>
+                <div class="k-input-wrapper">
+                    <input type="number" value="${w.alloc || ''}" onchange="updateWalletAlloc(${index}, this.value)" placeholder="0">
+                </div>
             </div>
         `;
         container.appendChild(div);
@@ -103,7 +109,7 @@ function addNewWallet() {
 // Xóa ví
 function deleteWallet(index) {
     const w = appData.wallets[index];
-    if(confirm(`CẢNH BÁO: Bạn có chắc muốn xóa ví "${w.name}"?\nToàn bộ dữ liệu nhập liệu và biến động của ví này sẽ mất vĩnh viễn!`)) {
+    if(confirm(`CẢNH BÁO: Bạn có chắc muốn xóa ví "${w.name.toUpperCase()}"?\nToàn bộ dữ liệu nhập liệu và biến động của ví này sẽ mất vĩnh viễn!`)) {
         appData.wallets.splice(index, 1);
         saveDB();
         renderAllocInputs();
