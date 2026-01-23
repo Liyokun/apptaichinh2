@@ -2,9 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Dashboard Pro Integrated</title>
+    <title>Finance Dashboard Dynamic</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <link rel="stylesheet" href="design.css">
 </head>
 <body data-theme="light">
@@ -18,33 +17,21 @@
         </div>
         <div id="intro-ui" style="text-align: center;">
             <h1 class="neon-title">FINANCE DASHBOARD</h1>
-            <p class="sub-title">System Version 7.5 | Quantum Access</p>
+            <p class="sub-title">System Version 8.0 | Dynamic Core</p>
             <button class="start-btn" onclick="startLoading()">Khởi chạy hệ thống</button>
         </div>
         <div id="loading-container">
             <div class="loader"></div>
-            <p class="loading-text">INITIALIZING... <span id="load-percent">0%</span></p>
+            <p class="loading-text">LOADING CORE... <span id="load-percent">0%</span></p>
         </div>
     </div>
 
     <div id="screen-daily" class="screen active">
         <h2 id="display-month-title">Nhập chi tiêu</h2>
-        <div class="card">
-            <div class="group-title">Chi tiêu dùng (Lifestyle)</div>
-            <div class="input-group"><span>Skincare</span><div class="k-input-wrapper"><input type="number" id="inp-skincare" oninput="calc()"></div></div>
-            <div class="input-group"><span>Sức khỏe</span><div class="k-input-wrapper"><input type="number" id="inp-health" oninput="calc()"></div></div>
-            <div class="input-group"><span>Khác</span><div class="k-input-wrapper"><input type="number" id="inp-other-lifestyle" oninput="calc()"></div></div>
-            <button class="note-btn" onclick="addNote('otherLife')">📝 Ghi chú mục Khác</button>
-            <div class="total-row">Đã dùng: <span id="total-lifestyle">0</span></div>
-        </div>
-        <div class="card">
-            <div class="group-title">Chi cần thiết (Essential)</div>
-            <div class="input-group"><span>Xăng xe</span><div class="k-input-wrapper"><input type="number" id="inp-gas" oninput="calc()"></div></div>
-            <div class="input-group"><span>Khác</span><div class="k-input-wrapper"><input type="number" id="inp-other-essential" oninput="calc()"></div></div>
-            <button class="note-btn" onclick="addNote('otherEss')">📝 Ghi chú mục Khác</button>
-            <div class="total-row">Đã dùng: <span id="total-essential">0</span></div>
-        </div>
-        <button class="btn btn-primary" onclick="endMonth()">KẾT THÚC THÁNG</button>
+        
+        <div id="daily-wallets-list"></div>
+
+        <button class="btn btn-primary" onclick="endMonth()">KẾT THÚC THÁNG (RESET)</button>
     </div>
 
     <div id="screen-budget" class="screen">
@@ -52,13 +39,11 @@
         <div class="saving-box">
             <div class="saving-label">Mục tiêu Tiết kiệm (Dự tính)</div>
             <div class="saving-value" id="static-saving-display">0 VNĐ</div>
-            <div style="font-size: 11px; opacity: 0.7; margin-top:5px;">(Con số này chỉ thay đổi khi sửa Phân bổ gốc)</div>
         </div>
         <div class="card" id="budget-details"></div>
         <div class="balance-box" id="balance-box-ui">
             <div class="balance-label">SỐ DƯ THỰC TẾ HIỆN TẠI</div>
             <div class="balance-value" id="actual-balance-display">0 VNĐ</div>
-            <div style="font-size: 12px; margin-top: 5px;">= Tổng Ngân Sách - Tổng Tất Cả Đã Chi</div>
         </div>
     </div>
 
@@ -79,23 +64,30 @@
     </div>
 
     <div id="screen-alloc" class="screen">
-        <h2>Cấu hình Ngân sách Gốc</h2>
-        <p style="color: #666; font-size: 13px;">Nhập đơn vị K (500 = 500.000đ)</p>
+        <h2>Cấu hình Ngân sách</h2>
+        <p style="color: #666; font-size: 13px;">Quản lý các ví chi tiêu của bạn tại đây</p>
+        
         <div class="card">
             <div class="input-group" style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px;">
-                <span style="font-weight:bold; color:var(--primary); font-size: 16px;">TỔNG NGÂN SÁCH GỐC</span>
-                <div class="k-input-wrapper"><input type="number" id="base-total-budget" style="font-weight:bold; color:var(--primary);" oninput="previewSaving()"></div>
+                <span style="font-weight:bold; color:var(--primary); font-size: 16px;">TỔNG NGÂN SÁCH GỐC (K)</span>
+                <div class="k-input-wrapper">
+                    <input type="number" id="base-total-budget" style="font-weight:bold; color:var(--primary);" onchange="updateBaseTotal(this.value)">
+                </div>
             </div>
-            <div class="group-title" style="font-size: 14px;">Phân bổ các ví con:</div>
-            <div class="input-group"><span>Skincare</span><div class="k-input-wrapper"><input type="number" id="base-skincare" oninput="previewSaving()"></div></div>
-            <div class="input-group"><span>Sức khỏe</span><div class="k-input-wrapper"><input type="number" id="base-health" oninput="previewSaving()"></div></div>
-            <div class="input-group"><span>Tiêu dùng (Khác)</span><div class="k-input-wrapper"><input type="number" id="base-other-lifestyle" oninput="previewSaving()"></div></div>
-            <div class="input-group"><span>Cần thiết (Tổng)</span><div class="k-input-wrapper"><input type="number" id="base-essential" oninput="previewSaving()"></div></div>
-            <div style="background: #FFF3E0; padding: 10px; border-radius: 8px; text-align: center; margin-top: 10px;">
+
+            <div class="group-title" style="display:flex; justify-content:space-between; align-items:center;">
+                <span>Danh sách Ví con:</span>
+                <button class="btn-mini btn-add" onclick="addNewWallet()">+ Thêm ví</button>
+            </div>
+
+            <div id="alloc-wallets-container"></div>
+
+            <div style="background: #FFF3E0; padding: 10px; border-radius: 8px; text-align: center; margin-top: 15px;">
                 <div style="font-size: 12px; color: #E65100;">Tiết kiệm dự tính (Còn lại):</div>
                 <div id="preview-saving-calc" style="font-weight: bold; color: #E65100; font-size: 18px;">0</div>
             </div>
-            <button class="btn btn-success" onclick="saveBase()">LƯU CẤU HÌNH</button>
+
+            <button class="btn btn-success" onclick="saveAllocConfig()">LƯU CẤU HÌNH</button>
         </div>
     </div>
 
@@ -123,6 +115,5 @@
 
     <script src="magic.js"></script>
     <script src="logic.js"></script>
-
 </body>
 </html>

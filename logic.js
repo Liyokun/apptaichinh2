@@ -1,20 +1,28 @@
 /* =================================================================
-   FILE LOGIC: CHỨA CÁC PHÉP TÍNH TOÁN VÀ DỮ LIỆU
+   FILE LOGIC: HỆ THỐNG VÍ ĐỘNG (DYNAMIC WALLET SYSTEM)
    ================================================================= */
 
-// --- KHỞI TẠO DỮ LIỆU ---
-let base = JSON.parse(localStorage.getItem('base_config_v3')) || {
-    total: 0, skin: 0, health: 0, lifeOther: 0, ess: 0
+// --- 1. KHỞI TẠO DỮ LIỆU ---
+// Cấu trúc mới: appData chứa tổng ngân sách và mảng các ví con
+let appData = JSON.parse(localStorage.getItem('app_data_v4')) || {
+    totalBudget: 0,
+    wallets: [
+        // Dữ liệu mẫu ban đầu (Bạn có thể xóa trong app sau này)
+        { id: 1, name: "Skincare", alloc: 0, spent: 0, lastInput: 0, note: "" },
+        { id: 2, name: "Sức khỏe", alloc: 0, spent: 0, lastInput: 0, note: "" },
+        { id: 3, name: "Tiêu dùng", alloc: 0, spent: 0, lastInput: 0, note: "" },
+        { id: 4, name: "Cần thiết", alloc: 0, spent: 0, lastInput: 0, note: "" }
+    ]
 };
-let notes = {};
+
 let mName = localStorage.getItem('mName_v3') || "Tháng hiện tại";
 let theme = localStorage.getItem('theme_v3') || 'light';
 
 // Hàm tiện ích
-const getVal = (id) => (Number(document.getElementById(id).value) || 0) * 1000;
 const fmt = (n) => n.toLocaleString('vi-VN');
+const saveDB = () => localStorage.setItem('app_data_v4', JSON.stringify(appData));
 
-// --- LOGIC GIAO DIỆN ---
+// --- 2. LOGIC GIAO DIỆN CHUNG ---
 document.body.setAttribute('data-theme', theme);
 document.getElementById('month-name-inp').value = mName;
 document.getElementById('display-month-title').innerText = mName;
@@ -30,10 +38,13 @@ function tab(id) {
         document.querySelectorAll('.nav-item')[idx].classList.add('active');
     }
 
+    // Render lại dữ liệu mới nhất mỗi khi chuyển tab
+    if(id === 'daily') renderDailyInputs();
     if(id === 'budget') renderBudgetLogic();
     if(id === 'status') renderStatusLogic(); 
     if(id === 'history') renderHistory();
-    if(id === 'alloc') loadAllocInputs();
+    if(id === 'alloc') renderAllocInputs();
+    
     window.scrollTo(0,0);
 }
 
@@ -43,202 +54,185 @@ function toggleTheme() {
     document.body.setAttribute('data-theme', theme);
 }
 
-function calc() {
-    const life = getVal('inp-skincare') + getVal('inp-health') + getVal('inp-other-lifestyle');
-    const ess = getVal('inp-gas') + getVal('inp-other-essential');
-    document.getElementById('total-lifestyle').innerText = fmt(life);
-    document.getElementById('total-essential').innerText = fmt(ess);
-}
+// --- 3. LOGIC PHÂN BỔ (GỐC RỄ) ---
 
-function addNote(key) {
-    const current = notes[key] || "";
-    const input = prompt("Ghi chú:", current);
-    if(input !== null) notes[key] = input;
-}
+// Vẽ danh sách ví ở màn hình Phân bổ
+function renderAllocInputs() {
+    document.getElementById('base-total-budget').value = appData.totalBudget || '';
+    
+    const container = document.getElementById('alloc-wallets-container');
+    container.innerHTML = ''; // Xóa cũ vẽ mới
 
-function loadAllocInputs() {
-    document.getElementById('base-total-budget').value = base.total || '';
-    document.getElementById('base-skincare').value = base.skin || '';
-    document.getElementById('base-health').value = base.health || '';
-    document.getElementById('base-other-lifestyle').value = base.lifeOther || '';
-    document.getElementById('base-essential').value = base.ess || '';
+    appData.wallets.forEach((w, index) => {
+        const div = document.createElement('div');
+        div.className = 'input-group';
+        div.innerHTML = `
+            <div style="display:flex; align-items:center; width:100%;">
+                <button class="btn-icon-del" onclick="deleteWallet(${index})">🗑️</button>
+                <span style="flex:1; margin-left:10px; font-weight:500;">${w.name}</span>
+            </div>
+            <div class="k-input-wrapper">
+                <input type="number" value="${w.alloc || ''}" onchange="updateWalletAlloc(${index}, this.value)" placeholder="0">
+            </div>
+        `;
+        container.appendChild(div);
+    });
     previewSaving();
 }
 
-function previewSaving() {
-    const total = Number(document.getElementById('base-total-budget').value) || 0;
-    const sub = (Number(document.getElementById('base-skincare').value)||0) +
-                (Number(document.getElementById('base-health').value)||0) +
-                (Number(document.getElementById('base-other-lifestyle').value)||0) +
-                (Number(document.getElementById('base-essential').value)||0);
-    document.getElementById('preview-saving-calc').innerText = (total - sub).toLocaleString('vi-VN') + " K";
+// Thêm ví mới
+function addNewWallet() {
+    const name = prompt("Nhập tên ví mới (Ví dụ: Trà sữa):");
+    if (name) {
+        appData.wallets.push({
+            id: Date.now(), // ID duy nhất
+            name: name,
+            alloc: 0,
+            spent: 0,
+            lastInput: 0,
+            note: ""
+        });
+        saveDB();
+        renderAllocInputs();
+    }
 }
 
-function saveBase() {
-    base = {
-        total: Number(document.getElementById('base-total-budget').value),
-        skin: Number(document.getElementById('base-skincare').value),
-        health: Number(document.getElementById('base-health').value),
-        lifeOther: Number(document.getElementById('base-other-lifestyle').value),
-        ess: Number(document.getElementById('base-essential').value)
-    };
-    localStorage.setItem('base_config_v3', JSON.stringify(base));
-    alert("Đã lưu Phân bổ & Tính toán lại Tiết kiệm dự tính!");
-    tab('daily');
+// Xóa ví
+function deleteWallet(index) {
+    const w = appData.wallets[index];
+    if(confirm(`CẢNH BÁO: Bạn có chắc muốn xóa ví "${w.name}"?\nToàn bộ dữ liệu nhập liệu và biến động của ví này sẽ mất vĩnh viễn!`)) {
+        appData.wallets.splice(index, 1);
+        saveDB();
+        renderAllocInputs();
+    }
 }
+
+// Cập nhật ngân sách cho từng ví
+function updateWalletAlloc(index, val) {
+    appData.wallets[index].alloc = Number(val);
+    previewSaving(); // Tính toán lại số dư dự kiến ngay lập tức
+}
+
+// Lưu tổng ngân sách gốc
+function updateBaseTotal(val) {
+    appData.totalBudget = Number(val);
+    previewSaving();
+}
+
+// Tính toán Tiết kiệm dự tính (Real-time)
+function previewSaving() {
+    const total = appData.totalBudget || 0;
+    const allocated = appData.wallets.reduce((sum, w) => sum + (w.alloc || 0), 0);
+    document.getElementById('preview-saving-calc').innerText = (total - allocated).toLocaleString('vi-VN') + " K";
+}
+
+// Nút Lưu Cấu Hình
+function saveAllocConfig() {
+    saveDB();
+    alert("Đã cập nhật cấu trúc Ví & Ngân sách!");
+    tab('daily'); // Chuyển về màn hình nhập liệu
+}
+
+// --- 4. LOGIC NHẬP LIỆU (DAILY INPUT) ---
+
+function renderDailyInputs() {
+    const container = document.getElementById('daily-wallets-list');
+    container.innerHTML = '';
+
+    if(appData.wallets.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#999;">Chưa có ví nào. Hãy sang mục Phân bổ để tạo.</p>';
+        return;
+    }
+
+    appData.wallets.forEach((w, index) => {
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+            <div class="group-title">${w.name}</div>
+            
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="number" id="inp-${w.id}" placeholder="Nhập số thêm..." style="flex:1;">
+                <button class="btn-mini btn-save" onclick="saveTransaction(${index})">Lưu</button>
+                <button class="btn-mini btn-undo" onclick="undoTransaction(${index})">Xóa</button>
+            </div>
+
+            <input type="text" id="note-${w.id}" value="${w.note}" onchange="updateNote(${index}, this.value)" 
+                   placeholder="Ghi chú cho mục này..." style="font-size:14px; color:#666; font-style:italic; margin-bottom:10px; text-align:left;">
+
+            <div class="total-row">
+                Đã dùng: <span id="display-${w.id}">${fmt(w.spent * 1000)}</span>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function saveTransaction(index) {
+    const w = appData.wallets[index];
+    const inputEl = document.getElementById(`inp-${w.id}`);
+    const val = Number(inputEl.value);
+
+    if (val > 0) {
+        w.spent += val;      // Cộng dồn
+        w.lastInput = val;   // Lưu lịch sử tạm để Undo
+        
+        saveDB();
+        
+        // Cập nhật giao diện ngay lập tức
+        inputEl.value = '';
+        document.getElementById(`display-${w.id}`).innerText = fmt(w.spent * 1000);
+    }
+}
+
+function undoTransaction(index) {
+    const w = appData.wallets[index];
+    if (w.lastInput > 0) {
+        if(confirm(`Hoàn tác lệnh vừa nhập: trừ lại ${w.lastInput}K?`)) {
+            w.spent -= w.lastInput;
+            w.lastInput = 0; // Chỉ cho Undo 1 lần gần nhất
+            saveDB();
+            document.getElementById(`display-${w.id}`).innerText = fmt(w.spent * 1000);
+        }
+    } else {
+        alert("Không có lệnh nhập mới nào để xóa!");
+    }
+}
+
+function updateNote(index, val) {
+    appData.wallets[index].note = val;
+    saveDB();
+}
+
+// --- 5. LOGIC BIẾN ĐỘNG & TÌNH HÌNH ---
 
 function renderBudgetLogic() {
-    const spentSkin = getVal('inp-skincare');
-    const spentHealth = getVal('inp-health');
-    const spentLifeOther = getVal('inp-other-lifestyle');
-    const spentGas = getVal('inp-gas');
-    const spentEssOther = getVal('inp-other-essential');
-    const totalSpent = spentSkin + spentHealth + spentLifeOther + spentGas + spentEssOther;
-
-    const allocatedTotal = (base.skin + base.health + base.lifeOther + base.ess) * 1000;
-    const totalBudget = base.total * 1000;
-    const staticSaving = totalBudget - allocatedTotal;
-
+    // Tính toán lại
+    const totalBudget = appData.totalBudget * 1000;
+    const allocated = appData.wallets.reduce((sum, w) => sum + (w.alloc || 0), 0) * 1000;
+    const totalSpent = appData.wallets.reduce((sum, w) => sum + (w.spent || 0), 0) * 1000;
+    
+    // 1. Hiển thị Tiết kiệm dự tính
+    const staticSaving = totalBudget - allocated;
     document.getElementById('static-saving-display').innerText = fmt(staticSaving) + " VNĐ";
 
-    const details = [
-        { name: "Skincare", alloc: base.skin*1000, spent: spentSkin },
-        { name: "Sức khỏe", alloc: base.health*1000, spent: spentHealth },
-        { name: "Tiêu dùng (Khác)", alloc: base.lifeOther*1000, spent: spentLifeOther },
-        { name: "Cần thiết (Tổng)", alloc: base.ess*1000, spent: spentGas + spentEssOther }
-    ];
-
+    // 2. Hiển thị chi tiết từng ví
+    const container = document.getElementById('budget-details');
     let html = '';
-    details.forEach(item => {
-        const remain = item.alloc - item.spent;
-        const isNeg = remain < 0; 
-        html += `<div class="budget-row"><span>${item.name}</span><span class="budget-val ${isNeg ? 'text-red' : 'text-green'}">${fmt(remain)}</span></div>`;
+    
+    appData.wallets.forEach(w => {
+        const wAlloc = (w.alloc || 0) * 1000;
+        const wSpent = (w.spent || 0) * 1000;
+        const remain = wAlloc - wSpent;
+        const isNeg = remain < 0;
+        
+        html += `<div class="budget-row">
+                    <span>${w.name}</span>
+                    <span class="budget-val ${isNeg ? 'text-red' : 'text-green'}">${fmt(remain)}</span>
+                 </div>`;
     });
-    document.getElementById('budget-details').innerHTML = html;
+    container.innerHTML = html;
 
+    // 3. Hiển thị Số dư thực tế
     const actualBalance = totalBudget - totalSpent;
     const balEl = document.getElementById('actual-balance-display');
     const balBox = document.getElementById('balance-box-ui');
-    balEl.innerText = fmt(actualBalance) + " VNĐ";
-    
-    if (actualBalance < 0) {
-        balEl.classList.remove('text-green'); balEl.classList.add('text-red'); balBox.classList.add('border-red');
-    } else {
-        balEl.classList.remove('text-red'); balEl.classList.add('text-green'); balBox.classList.remove('border-red');
-    }
-}
-
-// Logic tính phần trăm cho màn hình Status
-function renderStatusLogic() {
-    const totalBudget = (base.total || 0) * 1000;
-    const currentSpent = getVal('inp-skincare') + getVal('inp-health') + getVal('inp-other-lifestyle') + getVal('inp-gas') + getVal('inp-other-essential');
-    const balance = totalBudget - currentSpent;
-    
-    let percent = 0;
-    if (totalBudget > 0) percent = (balance / totalBudget) * 100;
-    else percent = balance < 0 ? -1 : 0; 
-
-    document.getElementById('hologram-percent').innerText = percent.toFixed(1) + "%";
-    
-    let statusText = "Ổn định";
-    if(percent >= 75) statusText = "Rất tốt (Sakura)";
-    else if(percent >= 50) statusText = "Tốt (Summer)";
-    else if(percent >= 25) statusText = "Cẩn thận (Fall)";
-    else if(percent >= 0) statusText = "Nguy hiểm (Winter)";
-    else statusText = "Vỡ nợ (Zero)";
-    document.getElementById('hologram-status-text').innerText = statusText;
-
-    // GỌI HÀM BÊN FILE MAGIC ĐỂ HIỂN THỊ HÌNH ẢNH
-    updateVisuals(percent);
-}
-
-function endMonth() {
-    if(!confirm("Xác nhận Kết thúc tháng?\nDữ liệu sẽ được lưu vào lịch sử.")) return;
-    
-    const totalSpent = getVal('inp-skincare') + getVal('inp-health') + getVal('inp-other-lifestyle') + getVal('inp-gas') + getVal('inp-other-essential');
-    const totalBudget = base.total * 1000;
-    const finalBalance = totalBudget - totalSpent;
-
-    const record = {
-        id: Date.now(),
-        name: mName,
-        date: new Date().toLocaleDateString('vi-VN'),
-        balance: finalBalance,
-        spentData: {
-            skin: getVal('inp-skincare'),
-            health: getVal('inp-health'),
-            lifeOther: { v: getVal('inp-other-lifestyle'), n: notes.otherLife },
-            gas: getVal('inp-gas'),
-            essOther: { v: getVal('inp-other-essential'), n: notes.otherEss } 
-        }
-    };
-
-    const hist = JSON.parse(localStorage.getItem('hist_v3')) || [];
-    hist.unshift(record);
-    localStorage.setItem('hist_v3', JSON.stringify(hist));
-
-    document.querySelectorAll('#screen-daily input').forEach(i => i.value = '');
-    notes = {};
-    calc();
-    tab('history');
-}
-
-function renderHistory() {
-    const hist = JSON.parse(localStorage.getItem('hist_v3')) || [];
-    const container = document.getElementById('history-list');
-    if(hist.length === 0) { container.innerHTML = '<p style="text-align:center;color:#999;margin-top:30px;">Chưa có lịch sử</p>'; return; }
-
-    container.innerHTML = hist.map(h => `
-        <div class="card history-card">
-            <div class="history-header" onclick="this.nextElementSibling.classList.toggle('show')">
-                <div>
-                    <div style="font-weight:bold; font-size:16px;">${h.name}</div>
-                    <div style="font-size:12px; color:#888;">${h.date}</div>
-                </div>
-                <div style="font-weight:900; font-size:16px; ${h.balance < 0 ? 'color:var(--danger)' : 'color:var(--success)'}">
-                    ${h.balance < 0 ? '' : 'Dư: '}${fmt(h.balance)}
-                </div>
-            </div>
-
-            <div class="history-details">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Skincare:</span> <b>${fmt(h.spentData.skin)}</b></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Sức khỏe:</span> <b>${fmt(h.spentData.health)}</b></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span>Khác (Tiêu dùng):</span> 
-                    <div style="text-align:right">
-                        <b>${fmt(h.spentData.lifeOther.v)}</b>
-                        ${h.spentData.lifeOther.n ? `<br><i style="font-size:12px;color:#666">"${h.spentData.lifeOther.n}"</i>` : ''}
-                    </div>
-                </div>
-                <div style="border-top:1px dashed #ddd; margin:8px 0;"></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>Tiền xăng:</span> <b>${fmt(h.spentData.gas || 0)}</b></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                    <span>Khác (Cần thiết):</span> 
-                    <div style="text-align:right">
-                        <b>${fmt(h.spentData.essOther ? h.spentData.essOther.v : (h.spentData.ess ? h.spentData.ess.v : 0))}</b>
-                         ${(h.spentData.essOther && h.spentData.essOther.n) ? `<br><i style="font-size:12px;color:#666">"${h.spentData.essOther.n}"</i>` : ''}
-                    </div>
-                </div>
-                <button onclick="delHist(${h.id})" style="color:var(--danger); background:none; border:1px solid var(--danger); width:100%; margin-top:15px; border-radius:8px; padding:10px; font-weight:bold;">🗑️ Xóa bản ghi này</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function delHist(id) {
-    if(confirm("Xóa bản ghi này?")) {
-        let hist = JSON.parse(localStorage.getItem('hist_v3')) || [];
-        hist = hist.filter(h => h.id !== id);
-        localStorage.setItem('hist_v3', JSON.stringify(hist));
-        renderHistory();
-    }
-}
-
-function updateMonthName() {
-    mName = document.getElementById('month-name-inp').value;
-    localStorage.setItem('mName_v3', mName);
-    document.getElementById('display-month-title').innerText = mName;
-    alert("Đã đổi tên tháng");
-}
-
-document.querySelectorAll('input[type="number"]').forEach(i => i.setAttribute('inputmode', 'decimal'));
