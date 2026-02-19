@@ -17,7 +17,7 @@ function updateVisuals(percent) {
         display.style.backgroundImage = "url('fall.jpg')";
         createParticles('rain-drop', 100);
     } else if (percent >= 0) {
-        display.style.backgroundImage = "url('winter.jpg')";
+        display.style.backgroundImage = "url('winter1.jpg')";
         createParticles('snow-flake', 50);
     } else {
         display.style.backgroundImage = "url('zero.jpg')";
@@ -80,3 +80,4 @@ function startLoading() {
         }
     }, 120);
 }
+
